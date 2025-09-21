@@ -163,10 +163,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const navigateTo = (pageKey) => { Object.values(Pages).forEach(p => p.classList.add('hidden')); if (Pages[pageKey]) Pages[pageKey].classList.remove('hidden'); };
     const toggleLoader = (show) => Pages.loader.classList.toggle('hidden', !show);
     
-    // --- EXPLICIT WIDGET INITIALIZATION (THE FIX) --- //
+    // --- WIDGET INITIALIZATION (CORRECT AND FINAL) --- //
     uploadcare.Widget('#product-file');
     uploadcare.Widget('#payment-screenshot');
-    // --- END OF FIX --- //
 
     const showModal = (content) => {
         Elements.modalContent.innerHTML = content;
@@ -187,7 +186,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 300);
     };
     
-    // --- API & DATA HANDLING (NOW SAFER!) --- //
+    // --- API & DATA HANDLING --- //
     
     const readBin = async () => {
         const response = await fetch(`${Config.JSONBIN_URL}/latest`, { headers: { 'X-Master-Key': Config.JSONBIN_MASTER_KEY } });
@@ -201,19 +200,15 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             let currentData = await readBin();
             const newData = modifier(currentData);
-            
-            if (newData === null) { // Allow modifier to signal an error
+            if (newData === null) {
                 return false;
             }
-
             const response = await fetch(Config.JSONBIN_URL, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', 'X-Master-Key': Config.JSONBIN_MASTER_KEY },
                 body: JSON.stringify(newData)
             });
-
             if (!response.ok) throw new Error('Failed to update data bin.');
-            
             AppState.data = newData;
             return true;
         } catch (error) {
@@ -243,11 +238,9 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // --- RENDER FUNCTIONS --- //
-
     const renderProducts = () => {
         Elements.productList.innerHTML = '';
         const userRequests = AppState.data.requests.filter(req => req.userEmail === AppState.currentUser.email);
-
         AppState.data.products.forEach(product => {
             const userRequest = userRequests.find(req => req.productId === product.id);
             let buttonHtml = `<button data-product-id="${product.id}" class="buy-button w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Buy</button>`;
@@ -280,12 +273,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         pendingRequests.forEach(req => {
             const product = AppState.data.products.find(p => p.id === req.productId);
-            Elements.paymentRequestsList.innerHTML += `<div class="bg-gray-900 p-4 rounded-lg"><p><strong>User:</strong> ${req.userEmail}</p><p><strong>Bot:</strong> ${product ? product.name : 'Unknown'}</p><a href="${req.screenshotUrl}" target="_blank" class="text-blue-400 hover:underline">View Screenshot</a><div class="mt-2 space-x-2"><button data-request-id="${req.id}" data-screenshot-uuid="${req.screenshotUuid}" class="accept-request-button bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-md">Accept</button><button data-request-id="${req.id}" data-screenshot-uuid="${req.screenshotUuid}" class="reject-request-button bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-md">Reject</button></div></div>`;
+            Elements.paymentRequestsList.innerHTML += `<div class="bg-gray-900 p-4 rounded-lg"><p><strong>User:</strong> ${req.userEmail}</p><p><strong>Bot:</strong> ${product ? product.name : 'Unknown'}</p><a href="${req.screenshotUrl}" target="_blank" class="text-blue-400 hover:underline">View Screenshot</a><div class="mt-2 space-x-2"><button data-request-id="${req.id}" data-screenshot-uuid="${getUuidFromUrl(req.screenshotUrl)}" class="accept-request-button bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-md">Accept</button><button data-request-id="${req.id}" data-screenshot-uuid="${getUuidFromUrl(req.screenshotUrl)}" class="reject-request-button bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-md">Reject</button></div></div>`;
         });
     };
 
     // --- CORE LOGIC & EVENT HANDLERS --- //
-
     const initializeApp = async () => {
         toggleLoader(true);
         try {
@@ -311,9 +303,8 @@ document.addEventListener('DOMContentLoaded', () => {
             toggleLoader(false);
         }
     };
-    
+
     // --- EVENT LISTENERS --- //
-    
     Elements.logo.addEventListener('click', () => { if (AppState.currentUser) { AppState.currentUser.email === Config.ADMIN_EMAIL ? navigateTo('admin') : navigateTo('products'); } else { navigateTo('landing'); } });
     Elements.getStartedButton.addEventListener('click', () => navigateTo('auth'));
     Elements.showSignupLink.addEventListener('click', (e) => { e.preventDefault(); Elements.loginForm.classList.add('hidden'); Elements.signupForm.classList.remove('hidden'); Elements.authError.textContent = ''; });
@@ -371,18 +362,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
     Elements.paymentVerificationForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const widget = uploadcare.Widget('#payment-screenshot');
-        const fileInfo = await widget.value();
-        if (!fileInfo) { alert('Please upload a screenshot.'); return; }
+        const screenshotInput = document.getElementById('payment-screenshot');
+        const fileUrl = screenshotInput.value;
+
+        if (!fileUrl) {
+            alert('Please upload a screenshot and wait for the upload to complete before submitting.');
+            return;
+        }
 
         const modifier = data => {
-            data.requests.push({ id: `req_${Date.now()}`, userEmail: AppState.currentUser.email, productId: AppState.currentPaymentProductId, screenshotUrl: fileInfo.cdnUrl, screenshotUuid: fileInfo.uuid, status: 'pending' });
+            data.requests.push({
+                id: `req_${Date.now()}`,
+                userEmail: AppState.currentUser.email,
+                productId: AppState.currentPaymentProductId,
+                screenshotUrl: fileUrl,
+                status: 'pending'
+            });
             return data;
         };
 
         if (await safeUpdateBin(modifier)) {
             alert('Your request has been submitted!');
-            widget.value(null);
+            uploadcare.Widget(screenshotInput).value(null);
             renderProducts();
             navigateTo('products');
         }
@@ -392,19 +393,29 @@ document.addEventListener('DOMContentLoaded', () => {
     
     Elements.addProductForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const widget = uploadcare.Widget('#product-file');
-        const fileInfo = await widget.value();
-        if (!fileInfo) { alert('Please upload the bot code file.'); return; }
+        const productFileInput = document.getElementById('product-file');
+        const fileUrl = productFileInput.value;
+        
+        if (!fileUrl) {
+            alert('Please upload the bot code file and wait for the upload to complete.');
+            return;
+        }
 
         const modifier = data => {
-            data.products.push({ id: `prod_${Date.now()}`, name: document.getElementById('product-name').value, description: document.getElementById('product-description').value, price: document.getElementById('product-price').value, fileUrl: fileInfo.cdnUrl });
+            data.products.push({
+                id: `prod_${Date.now()}`,
+                name: document.getElementById('product-name').value,
+                description: document.getElementById('product-description').value,
+                price: document.getElementById('product-price').value,
+                fileUrl: fileUrl
+            });
             return data;
         };
 
         if (await safeUpdateBin(modifier)) {
             alert('Product added successfully!');
             Elements.addProductForm.reset();
-            widget.value(null);
+            uploadcare.Widget(productFileInput).value(null);
             renderAdminDashboard();
         }
     });
@@ -504,7 +515,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- INITIALIZE THE APP --- //
     initializeApp();
 });
-</script>          
+</script>
+
 </body>
 </html>
 
