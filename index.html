@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram Bot Code Marketplace</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Uploadcare Widget CDN -->
+    <script src="https://ucarecdn.com/libs/widget/3.x/uploadcare.full.min.js" charset="utf-8"></script>
+
+    <style>
+        /* Custom scrollbar for a more integrated dark theme feel */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1a202c; /* gray-900 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4a5568; /* gray-600 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #718096; /* gray-500 */
+        }
+        /* Custom styles for loader */
+        .loader {
+            border-top-color: #3498db;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        /* Styles for Modal */
+        .modal-overlay {
+            transition: opacity 0.3s ease;
+        }
+        .modal-content {
+            transition: transform 0.3s ease;
+        }
+        /* Ensure hidden elements are not focusable */
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200 font-sans antialiased">
+
+    <!-- Global Loader -->
+    <div id="loader" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 hidden">
+        <div class="loader ease-linear rounded-full border-8 border-t-8 border-gray-500 h-24 w-24"></div>
+    </div>
+
+    <!-- Modal Container -->
+    <div id="modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-40 hidden">
+        <div id="modal-content" class="modal-content bg-gray-800 rounded-lg shadow-xl w-full max-w-md p-6 transform scale-95">
+            <!-- Modal content will be injected here -->
+        </div>
+    </div>
+
+    <!-- Main Application Container -->
+    <div id="app" class="container mx-auto p-4 md:p-8">
+
+        <!-- Header/Navigation -->
+        <header class="flex justify-between items-center mb-8">
+            <h1 id="logo" class="text-2xl md:text-3xl font-bold text-blue-400 cursor-pointer">BotMarket</h1>
+            <nav id="nav-links">
+                <button id="logout-button" class="hidden bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Logout</button>
+            </nav>
+        </header>
+
+        <!-- Landing Page View -->
+        <main id="landing-page">
+            <div class="text-center py-16">
+                <h2 class="text-4xl md:text-6xl font-extrabold mb-4">The Premier Marketplace for <span class="text-blue-400">Telegram Bot Codes</span></h2>
+                <p class="text-lg md:text-xl text-gray-400 max-w-3xl mx-auto mb-8">
+                    Discover, purchase, and deploy high-quality, pre-built Telegram bots to supercharge your communities and workflows.
+                </p>
+                <div class="space-x-4">
+                    <button id="get-started-button" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg text-lg transition duration-300">Get Started</button>
+                    <a href="#help-section" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-8 rounded-lg text-lg transition duration-300">Help</a>
+                </div>
+            </div>
+            
+            <section id="help-section" class="mt-20 py-16 bg-gray-800 rounded-lg">
+                <div class="text-center max-w-4xl mx-auto px-4">
+                    <h3 class="text-3xl font-bold mb-6">How It Works</h3>
+                    <div class="grid md:grid-cols-3 gap-8 text-left">
+                        <div class="bg-gray-900 p-6 rounded-lg"><h4 class="text-xl font-semibold mb-2 text-blue-400">1. Sign Up & Browse</h4><p class="text-gray-400">Create a secure account in seconds. Explore our curated list of powerful Telegram bots available for purchase.</p></div>
+                        <div class="bg-gray-900 p-6 rounded-lg"><h4 class="text-xl font-semibold mb-2 text-blue-400">2. Secure Purchase</h4><p class="text-gray-400">Choose a bot and proceed to our simple payment page. Upload a screenshot of your UPI payment for quick verification.</p></div>
+                        <div class="bg-gray-900 p-6 rounded-lg"><h4 class="text-xl font-semibold mb-2 text-blue-400">3. Download & Deploy</h4><p class="text-gray-400">Once your payment is approved by our admin, the download button will be unlocked. Get your bot code instantly!</p></div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Authentication Page View -->
+        <main id="auth-page" class="hidden max-w-md mx-auto">
+            <div class="bg-gray-800 p-8 rounded-xl shadow-lg">
+                <form id="login-form"><h2 class="text-3xl font-bold text-center mb-6">Login</h2><div class="mb-4"><label for="login-email" class="block mb-2 text-sm font-medium">Email</label><input type="email" id="login-email" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required></div><div class="mb-6"><label for="login-password" class="block mb-2 text-sm font-medium">Password</label><input type="password" id="login-password" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required></div><button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition duration-300">Login</button><p class="text-center mt-4 text-sm">Don't have an account? <a href="#" id="show-signup" class="text-blue-400 hover:underline">Sign Up</a></p></form>
+                <form id="signup-form" class="hidden"><h2 class="text-3xl font-bold text-center mb-6">Sign Up</h2><div class="mb-4"><label for="signup-email" class="block mb-2 text-sm font-medium">Email</label><input type="email" id="signup-email" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required></div><div class="mb-6"><label for="signup-password" class="block mb-2 text-sm font-medium">Password</label><input type="password" id="signup-password" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required></div><button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition duration-300">Create Account</button><p class="text-center mt-4 text-sm">Already have an account? <a href="#" id="show-login" class="text-blue-400 hover:underline">Login</a></p></form>
+                <p id="auth-error" class="text-red-400 text-center mt-4"></p>
+            </div>
+        </main>
+
+        <!-- Products Page View -->
+        <main id="products-page" class="hidden">
+            <h2 class="text-3xl font-bold mb-6">Available Bots</h2>
+            <div id="product-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+        </main>
+
+        <!-- Admin Dashboard View -->
+        <main id="admin-dashboard" class="hidden">
+            <h2 class="text-3xl font-bold mb-8">Admin Dashboard</h2>
+            <div class="space-y-12">
+                <!-- Manage Products Section -->
+                <section id="manage-products-section" class="bg-gray-800 p-6 rounded-lg">
+                    <h3 class="text-2xl font-semibold mb-4">Manage Products</h3>
+                    <div id="admin-product-list" class="space-y-4 max-h-96 overflow-y-auto">
+                        <!-- Admin product list will be injected here -->
+                    </div>
+                </section>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="bg-gray-800 p-6 rounded-lg"><h3 class="text-2xl font-semibold mb-4">Add New Product</h3><form id="add-product-form"><div class="mb-4"><label for="product-name" class="block mb-2">Bot Name</label><input type="text" id="product-name" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg" required></div><div class="mb-4"><label for="product-description" class="block mb-2">Description</label><textarea id="product-description" rows="3" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg" required></textarea></div><div class="mb-4"><label for="product-price" class="block mb-2">Price (USD)</label><input type="number" id="product-price" step="0.01" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg" required></div><div class="mb-4"><label for="product-file" class="block mb-2">Bot Code File (.zip)</label><input type="hidden" role="uploadcare-uploader" id="product-file" data-public-key="5facbfaba6ac21c74a4f" data-tabs="file" required></div><button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg">Add Product</button></form></div>
+                    <div class="bg-gray-800 p-6 rounded-lg"><h3 class="text-2xl font-semibold mb-4">Pending Payment Verifications</h3><div id="payment-requests-list" class="space-y-4 max-h-96 overflow-y-auto"></div></div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Payment Page View -->
+        <main id="payment-page" class="hidden max-w-lg mx-auto">
+             <div class="bg-gray-800 p-8 rounded-xl shadow-lg"><h2 class="text-3xl font-bold text-center mb-2">Complete Your Purchase</h2><div id="payment-product-info" class="text-center mb-6"></div><div class="text-center mb-6"><h3 class="text-lg font-semibold mb-2">Scan to Pay</h3><div class="w-48 h-48 bg-white mx-auto rounded-lg flex items-center justify-center"><img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=upi://pay?pa=shebinraju2021@upi" alt="UPI QR Code"></div><p class="mt-2 text-gray-400">or pay to UPI ID:</p><p class="font-mono text-lg text-blue-300">shebinraju2021@upi</p></div><form id="payment-verification-form"><div class="mb-4"><label for="payment-screenshot" class="block mb-2 text-center">Upload Payment Screenshot</label><input type="hidden" role="uploadcare-uploader" id="payment-screenshot" data-public-key="5facbfaba6ac21c74a4f" data-tabs="file image" required></div><button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg transition duration-300">Submit for Verification</button><button type="button" id="cancel-payment-button" class="w-full mt-2 bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 rounded-lg transition duration-300">Cancel</button></form></div>
+        </main>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // --- STATE MANAGEMENT & CONSTANTS --- //
+    const AppState = {
+        currentUser: null,
+        data: { users: [], products: [], requests: [] },
+        currentPaymentProductId: null,
+        editingProductId: null,
+        deletingProductId: null,
+    };
+
+    const Config = {
+        JSONBIN_URL: 'https://api.jsonbin.io/v3/b/68d0069143b1c97be94a639a',
+        JSONBIN_MASTER_KEY: '$2a$10$OWB0wBTxocZeAjW4yY5pyOQwnVSUr5a3bovRM9LZM5NJI8zpiT3eS',
+        UPLOADCARE_PUBLIC_KEY: '5facbfaba6ac21c74a4f',
+        UPLOADCARE_SECRET_KEY: '66fd6d4755321c2f9be2',
+        ADMIN_EMAIL: 'shebinraju2021@gmail.com'
+    };
+    
+    // --- DOM ELEMENT SELECTORS --- //
+    const Pages = { loader: document.getElementById('loader'), landing: document.getElementById('landing-page'), auth: document.getElementById('auth-page'), products: document.getElementById('products-page'), admin: document.getElementById('admin-dashboard'), payment: document.getElementById('payment-page'), };
+    const Elements = { logo: document.getElementById('logo'), logoutButton: document.getElementById('logout-button'), getStartedButton: document.getElementById('get-started-button'), loginForm: document.getElementById('login-form'), signupForm: document.getElementById('signup-form'), showSignupLink: document.getElementById('show-signup'), showLoginLink: document.getElementById('show-login'), authError: document.getElementById('auth-error'), productList: document.getElementById('product-list'), addProductForm: document.getElementById('add-product-form'), paymentRequestsList: document.getElementById('payment-requests-list'), adminProductList: document.getElementById('admin-product-list'), paymentProductInfo: document.getElementById('payment-product-info'), paymentVerificationForm: document.getElementById('payment-verification-form'), cancelPaymentButton: document.getElementById('cancel-payment-button'), modal: document.getElementById('modal'), modalContent: document.getElementById('modal-content'), };
+
+    // --- UI & MODAL MANAGEMENT --- //
+    const navigateTo = (pageKey) => { Object.values(Pages).forEach(p => p.classList.add('hidden')); if (Pages[pageKey]) Pages[pageKey].classList.remove('hidden'); };
+    const toggleLoader = (show) => Pages.loader.classList.toggle('hidden', !show);
+
+    const showModal = (content) => {
+        Elements.modalContent.innerHTML = content;
+        Elements.modal.classList.remove('hidden');
+        Elements.modal.classList.add('flex');
+        setTimeout(() => {
+            Elements.modal.classList.remove('opacity-0');
+            Elements.modalContent.classList.remove('scale-95');
+        }, 10);
+    };
+
+    const hideModal = () => {
+        Elements.modal.classList.add('opacity-0');
+        Elements.modalContent.classList.add('scale-95');
+        setTimeout(() => {
+            Elements.modal.classList.add('hidden');
+            Elements.modal.classList.remove('flex');
+        }, 300);
+    };
+    
+    // --- API & DATA HANDLING (NOW SAFER!) --- //
+    
+    /**
+     * Reads the latest version of the data from JSONBin.io.
+     * @returns {Promise<object|null>} The database content.
+     */
+    const readBin = async () => {
+        const response = await fetch(`${Config.JSONBIN_URL}/latest`, { headers: { 'X-Master-Key': Config.JSONBIN_MASTER_KEY } });
+        if (!response.ok) throw new Error('Failed to read data bin.');
+        const data = await response.json();
+        return data.record;
+    };
+    
+    /**
+     * Safely updates data on JSONBin.io by performing a read-modify-write cycle.
+     * This prevents data corruption from race conditions.
+     * @param {function(object): object} modifier - A function that takes the current data, modifies it, and returns the new data.
+     * @returns {Promise<boolean>} True on success, false on failure.
+     */
+    const safeUpdateBin = async (modifier) => {
+        toggleLoader(true);
+        try {
+            let currentData = await readBin();
+            const newData = modifier(currentData);
+            
+            const response = await fetch(Config.JSONBIN_URL, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'X-Master-Key': Config.JSONBIN_MASTER_KEY },
+                body: JSON.stringify(newData)
+            });
+
+            if (!response.ok) throw new Error('Failed to update data bin.');
+            
+            // Update local state ONLY after successful remote update
+            AppState.data = newData;
+            return true;
+        } catch (error) {
+            console.error('Safe update failed:', error);
+            alert('A critical error occurred while saving data. Please try again.');
+            return false;
+        } finally {
+            toggleLoader(false);
+        }
+    };
+
+    const getUuidFromUrl = (url) => {
+        if (!url) return null;
+        const match = url.match(/ucarecdn\.com\/([a-f0-9-]+)\//i);
+        return match ? match[1] : null;
+    };
+    
+    const deleteUploadcareFile = async (uuid) => {
+        if (!uuid) return;
+        try {
+            // SECURITY NOTICE: This is for demonstration only. In production, use a secure backend.
+            const response = await fetch(`https://api.uploadcare.com/files/${uuid}/`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Uploadcare.Simple ${Config.UPLOADCARE_PUBLIC_KEY}:${Config.UPLOADCARE_SECRET_KEY}`, 'Accept': 'application/vnd.uploadcare-v0.7+json' }
+            });
+            if (!response.ok) console.warn(`Failed to delete file ${uuid} from Uploadcare.`);
+        } catch (error) { console.error('Error deleting file from Uploadcare:', error); }
+    };
+
+    // --- RENDER FUNCTIONS --- //
+
+    const renderProducts = () => {
+        Elements.productList.innerHTML = '';
+        const userRequests = AppState.data.requests.filter(req => req.userEmail === AppState.currentUser.email);
+
+        AppState.data.products.forEach(product => {
+            const userRequest = userRequests.find(req => req.productId === product.id);
+            let buttonHtml = `<button data-product-id="${product.id}" class="buy-button w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Buy</button>`;
+            if (userRequest) {
+                if (userRequest.status === 'accepted') buttonHtml = `<a href="${product.fileUrl}" target="_blank" class="w-full block text-center bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Download</a>`;
+                else if (userRequest.status === 'pending') buttonHtml = `<button class="w-full bg-yellow-500 text-white font-bold py-2 px-4 rounded-lg cursor-not-allowed" disabled>Pending</button>`;
+            }
+            Elements.productList.innerHTML += `<div class="bg-gray-800 rounded-lg shadow-lg p-6 flex flex-col"><h3 class="text-xl font-bold mb-2 text-blue-300">${product.name}</h3><p class="text-gray-400 flex-grow mb-4">${product.description}</p><div class="flex justify-between items-center"><span class="text-2xl font-bold text-white">$${parseFloat(product.price).toFixed(2)}</span><div class="w-1/2">${buttonHtml}</div></div></div>`;
+        });
+    };
+    
+    const renderAdminProductList = () => {
+        Elements.adminProductList.innerHTML = '';
+        if (AppState.data.products.length === 0) {
+            Elements.adminProductList.innerHTML = '<p class="text-gray-500">No products found. Add one below.</p>';
+            return;
+        }
+        AppState.data.products.forEach(p => {
+            Elements.adminProductList.innerHTML += `<div class="bg-gray-900 p-4 rounded-lg flex justify-between items-center"><div><p class="font-bold">${p.name}</p><p class="text-sm text-gray-400">$${p.price}</p></div><div class="space-x-2"><button data-product-id="${p.id}" class="edit-product-button bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-1 rounded-md text-sm">Edit</button><button data-product-id="${p.id}" class="delete-product-button bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-md text-sm">Delete</button></div></div>`;
+        });
+    };
+    
+    const renderAdminDashboard = () => {
+        renderAdminProductList();
+        Elements.paymentRequestsList.innerHTML = '';
+        const pendingRequests = AppState.data.requests.filter(req => req.status === 'pending');
+        if (pendingRequests.length === 0) {
+            Elements.paymentRequestsList.innerHTML = '<p class="text-gray-500">No pending requests.</p>';
+            return;
+        }
+        pendingRequests.forEach(req => {
+            const product = AppState.data.products.find(p => p.id === req.productId);
+            Elements.paymentRequestsList.innerHTML += `<div class="bg-gray-900 p-4 rounded-lg"><p><strong>User:</strong> ${req.userEmail}</p><p><strong>Bot:</strong> ${product ? product.name : 'Unknown'}</p><a href="${req.screenshotUrl}" target="_blank" class="text-blue-400 hover:underline">View Screenshot</a><div class="mt-2 space-x-2"><button data-request-id="${req.id}" data-screenshot-uuid="${req.screenshotUuid}" class="accept-request-button bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-md">Accept</button><button data-request-id="${req.id}" data-screenshot-uuid="${req.screenshotUuid}" class="reject-request-button bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-md">Reject</button></div></div>`;
+        });
+    };
+
+    // --- CORE LOGIC & EVENT HANDLERS --- //
+
+    const initializeApp = async () => {
+        toggleLoader(true);
+        try {
+            AppState.data = await readBin();
+            const storedUser = sessionStorage.getItem('currentUser');
+            if (storedUser) {
+                AppState.currentUser = JSON.parse(storedUser);
+                Elements.logoutButton.classList.remove('hidden');
+                if (AppState.currentUser.email === Config.ADMIN_EMAIL) {
+                    renderAdminDashboard();
+                    navigateTo('admin');
+                } else {
+                    renderProducts();
+                    navigateTo('products');
+                }
+            } else {
+                navigateTo('landing');
+            }
+        } catch (error) {
+            console.error("Initialization failed:", error);
+            alert("Could not load application data. Please check your connection and refresh.");
+        } finally {
+            toggleLoader(false);
+        }
+    };
+    
+    // --- EVENT LISTENERS --- //
+    
+    // Navigation & Auth
+    Elements.logo.addEventListener('click', () => { if (AppState.currentUser) { AppState.currentUser.email === Config.ADMIN_EMAIL ? navigateTo('admin') : navigateTo('products'); } else { navigateTo('landing'); } });
+    Elements.getStartedButton.addEventListener('click', () => navigateTo('auth'));
+    Elements.showSignupLink.addEventListener('click', (e) => { e.preventDefault(); Elements.loginForm.classList.add('hidden'); Elements.signupForm.classList.remove('hidden'); Elements.authError.textContent = ''; });
+    Elements.showLoginLink.addEventListener('click', (e) => { e.preventDefault(); Elements.signupForm.classList.add('hidden'); Elements.loginForm.classList.remove('hidden'); Elements.authError.textContent = ''; });
+    Elements.logoutButton.addEventListener('click', () => { AppState.currentUser = null; sessionStorage.removeItem('currentUser'); Elements.logoutButton.classList.add('hidden'); navigateTo('landing'); });
+
+    Elements.loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('login-email').value;
+        const password = document.getElementById('login-password').value;
+        const user = AppState.data.users.find(u => u.email === email && u.password === password);
+        if (user) {
+            AppState.currentUser = { email: user.email };
+            sessionStorage.setItem('currentUser', JSON.stringify(AppState.currentUser));
+            Elements.authError.textContent = '';
+            Elements.logoutButton.classList.remove('hidden');
+            if (user.email === Config.ADMIN_EMAIL) { renderAdminDashboard(); navigateTo('admin'); } 
+            else { renderProducts(); navigateTo('products'); }
+        } else {
+            Elements.authError.textContent = 'Invalid email or password.';
+        }
+    });
+
+    Elements.signupForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('signup-email').value;
+        const password = document.getElementById('signup-password').value;
+        const modifier = (data) => {
+            if (data.users.some(u => u.email === email)) {
+                Elements.authError.textContent = 'An account with this email already exists.';
+                return null; // Signal failure
+            }
+            data.users.push({ email, password });
+            return data;
+        };
+        const success = await safeUpdateBin(modifier);
+        if (success) {
+            // Log in the new user
+            AppState.currentUser = { email };
+            sessionStorage.setItem('currentUser', JSON.stringify(AppState.currentUser));
+            Elements.logoutButton.classList.remove('hidden');
+            renderProducts();
+            navigateTo('products');
+        }
+    });
+
+    // User actions
+    Elements.productList.addEventListener('click', (e) => {
+        if (e.target.classList.contains('buy-button')) {
+            const productId = e.target.dataset.productId;
+            AppState.currentPaymentProductId = productId;
+            const product = AppState.data.products.find(p => p.id === productId);
+            Elements.paymentProductInfo.innerHTML = `<p class="text-xl font-semibold">${product.name}</p><p class="text-2xl font-bold text-blue-300">$${parseFloat(product.price).toFixed(2)}</p>`;
+            navigateTo('payment');
+        }
+    });
+
+    Elements.paymentVerificationForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const widget = uploadcare.Widget('#payment-screenshot');
+        const fileInfo = await widget.value();
+        if (!fileInfo) { alert('Please upload a screenshot.'); return; }
+
+        const modifier = data => {
+            data.requests.push({ id: `req_${Date.now()}`, userEmail: AppState.currentUser.email, productId: AppState.currentPaymentProductId, screenshotUrl: fileInfo.cdnUrl, screenshotUuid: fileInfo.uuid, status: 'pending' });
+            return data;
+        };
+
+        if (await safeUpdateBin(modifier)) {
+            alert('Your request has been submitted!');
+            widget.value(null);
+            renderProducts();
+            navigateTo('products');
+        }
+    });
+    
+    Elements.cancelPaymentButton.addEventListener('click', () => navigateTo('products'));
+    
+    // Admin Actions
+    Elements.addProductForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const widget = uploadcare.Widget('#product-file');
+        const fileInfo = await widget.value();
+        if (!fileInfo) { alert('Please upload the bot code file.'); return; }
+
+        const modifier = data => {
+            data.products.push({ id: `prod_${Date.now()}`, name: document.getElementById('product-name').value, description: document.getElementById('product-description').value, price: document.getElementById('product-price').value, fileUrl: fileInfo.cdnUrl });
+            return data;
+        };
+
+        if (await safeUpdateBin(modifier)) {
+            alert('Product added successfully!');
+            Elements.addProductForm.reset();
+            widget.value(null);
+            renderAdminDashboard();
+        }
+    });
+
+    Elements.paymentRequestsList.addEventListener('click', async (e) => {
+        const button = e.target.closest('button');
+        if (!button) return;
+        const requestId = button.dataset.requestId;
+        if (!requestId) return;
+
+        const isAccept = button.classList.contains('accept-request-button');
+        const isReject = button.classList.contains('reject-request-button');
+
+        if (isAccept || isReject) {
+            const modifier = data => {
+                const requestIndex = data.requests.findIndex(r => r.id === requestId);
+                if (requestIndex > -1) {
+                    if (isAccept) data.requests[requestIndex].status = 'accepted';
+                    else data.requests.splice(requestIndex, 1);
+                }
+                return data;
+            };
+            
+            if (await safeUpdateBin(modifier)) {
+                await deleteUploadcareFile(button.dataset.screenshotUuid);
+                renderAdminDashboard();
+            }
+        }
+    });
+
+    Elements.adminProductList.addEventListener('click', (e) => {
+        const button = e.target.closest('button');
+        if (!button) return;
+        const productId = button.dataset.productId;
+        const product = AppState.data.products.find(p => p.id === productId);
+        if (!product) return;
+        
+        if (button.classList.contains('delete-product-button')) {
+            AppState.deletingProductId = productId;
+            showModal(`<h3 class="text-xl font-bold mb-4">Confirm Deletion</h3><p>Are you sure you want to delete "${product.name}"? This action cannot be undone.</p><div class="mt-6 flex justify-end space-x-3"><button id="modal-cancel" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg">Cancel</button><button id="modal-confirm-delete" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg">Delete</button></div>`);
+        } else if (button.classList.contains('edit-product-button')) {
+            AppState.editingProductId = productId;
+            showModal(`<form id="edit-product-form"><h3 class="text-xl font-bold mb-4">Edit Product</h3><div class="space-y-4"><input type="text" id="edit-product-name" value="${product.name}" class="w-full p-2 bg-gray-700 rounded-lg" placeholder="Product Name"><textarea id="edit-product-desc" class="w-full p-2 bg-gray-700 rounded-lg" rows="3" placeholder="Description">${product.description}</textarea><input type="number" id="edit-product-price" value="${product.price}" class="w-full p-2 bg-gray-700 rounded-lg" placeholder="Price" step="0.01"><p class="text-sm text-gray-400">Upload a new file to replace the old one (optional):</p><input type="hidden" role="uploadcare-uploader" id="edit-product-file" data-public-key="${Config.UPLOADCARE_PUBLIC_KEY}" data-tabs="file"></div><div class="mt-6 flex justify-end space-x-3"><button type="button" id="modal-cancel" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg">Cancel</button><button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">Save Changes</button></div></form>`);
+            uploadcare.Widget('#edit-product-file'); // Initialize new widget
+        }
+    });
+    
+    Elements.modal.addEventListener('click', async (e) => {
+        if (e.target.id === 'modal-cancel' || e.target.closest('#modal-cancel')) { hideModal(); return; }
+        
+        if (e.target.id === 'modal-confirm-delete') {
+            const productToDelete = AppState.data.products.find(p => p.id === AppState.deletingProductId);
+            const fileUuidToDelete = getUuidFromUrl(productToDelete.fileUrl);
+
+            const modifier = data => {
+                data.products = data.products.filter(p => p.id !== AppState.deletingProductId);
+                // Also remove related purchase requests to avoid dangling references
+                data.requests = data.requests.filter(r => r.productId !== AppState.deletingProductId);
+                return data;
+            };
+
+            if (await safeUpdateBin(modifier)) {
+                if(fileUuidToDelete) await deleteUploadcareFile(fileUuidToDelete);
+                AppState.deletingProductId = null;
+                hideModal();
+                renderAdminDashboard();
+            }
+        }
+        
+        const editForm = e.target.closest('#edit-product-form');
+        if (editForm) {
+            e.preventDefault();
+            const widget = uploadcare.Widget('#edit-product-file');
+            const fileInfo = await widget.value();
+            const productToEdit = AppState.data.products.find(p => p.id === AppState.editingProductId);
+            const oldFileUuid = getUuidFromUrl(productToEdit.fileUrl);
+
+            const modifier = data => {
+                const productIndex = data.products.findIndex(p => p.id === AppState.editingProductId);
+                if (productIndex > -1) {
+                    data.products[productIndex].name = document.getElementById('edit-product-name').value;
+                    data.products[productIndex].description = document.getElementById('edit-product-desc').value;
+                    data.products[productIndex].price = document.getElementById('edit-product-price').value;
+                    if (fileInfo) data.products[productIndex].fileUrl = fileInfo.cdnUrl;
+                }
+                return data;
+            };
+            
+            if (await safeUpdateBin(modifier)) {
+                if (fileInfo && oldFileUuid) await deleteUploadcareFile(oldFileUuid);
+                AppState.editingProductId = null;
+                hideModal();
+                renderAdminDashboard();
+            }
+        }
+    });
+
+    // --- INITIALIZE THE APP --- //
+    initializeApp();
+});
+</script>
+
+</body>
+</html>
+
